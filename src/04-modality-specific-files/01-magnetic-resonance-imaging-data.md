@@ -597,10 +597,9 @@ Alternatively, if the *b*-vectors in the gradient table are given in *scanner co
 the column headers MUST be `R`, `A`, `S`, `b`.
 We will refer to this format as *RAS+b* in the following.
 
-It is RECOMMENDED to store the gradient table information in the original coordinate system
-stored by the scanner (therefore, unchanged).
+It is RECOMMENDED to store the gradient table information in the closest coordinate system to that stored by the scanner (and if already in either *RAS+b* or *IJK+b* form, unchanged).
 
-It is RECOMMENDED to maintain the column ordering as described above (thus, either `I J K b`
+It is REQUIRED to maintain the column ordering as described above (thus, either `I J K b`
 or `R A S b`).
 
 Example of TSV file, following the *RAS+b* convention:
@@ -613,8 +612,22 @@ R	A	S	b
 ```
 
 **Legacy `.bvec` & `.bval` specification of gradient information**.
+
 The `.bvec`/`.bval` files MUST follow the
 [FSL format](https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FDT/FAQ#What_conventions_do_the_bvecs_use.3F).
+
+_NOTE: For historic reasons, FSL tools only operate on images where the
+determinant of the 3x3 rotation component of the orientation matrix is
+negative (they also describe this as a "left-handed" coordinate
+system).  Any image that does not satisfy this requirement has its
+x-axis flipped to conform.  Though FSL tools keep this consistent
+internally, external files like the .bvec file are always interpreted
+in the context of the "flipped" data rather than the original data.
+Suffice it to say that this aspect causes confusion even for
+well-traveled diffusion analysis experts, which is one reason why this
+format is being deprecated.  See [this MRtrix community
+post](https://www.mrtrix.org/2016/04/15/bug-in-fsl-bvecs-handling/)
+for an excellent summary of the issue._
 
 The `.bvec` file contains 3 rows with *N* space-delimited floating-point numbers
 (corresponding to the *N* volumes in the corresponding NIfTI file.)
@@ -627,8 +640,8 @@ Following the FSL format for the `.bvec` specification, the coordinate system of
 the *b* vectors MUST be defined with respect to the coordinate system defined by
 the header of the corresponding `_dwi` NIfTI file and not the scanner's device
 coordinate system (see [Coordinate systems](../99-appendices/08-coordinate-systems.md)).
-The most relevant implication for this choice is that any rotations applied to the DWI data
-also need to be applied to the *b* vectors in the `[*_]dwi.bvec` file.
+The most relevant limitation imposed by this choice is that the gradient information cannot
+be directly stored in this format if the scanner generates *b*-vectors in *scanner coordinates* (without further transformation).
 
 Example of `.bvec` file, with *N*=6, with two *b*=0 volumes in the beginning:
 
@@ -648,6 +661,9 @@ Example of `.bval` file, corresponding to the previous `.bvec` example:
 ```
 
 **Conversion from the legacy `.bvec` & `.bval` format into gradient table (`.tsv`)**.
+
+_NOTE: This conversion is only valid for images whose image axes are "left-handed" within the *RAS+* coordinate space, other images may require a transformation of these vectors that may look trivial, but is beyond the scope of this document.  See note above for more details._
+
 To convert from the legacy format into table format, the values of the `.bvec` file
 are transposed, the values of the `.bval` file are contatenated as the fourth column
 and the `I J K b` header is inserted.
